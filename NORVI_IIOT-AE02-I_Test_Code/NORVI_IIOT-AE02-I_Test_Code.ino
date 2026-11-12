@@ -1,4 +1,9 @@
+/*
+ * NORVI IIOT AE02-I  FINAL
+ */
+ 
 #include <Wire.h>
+#include <WiFi.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_ADS1X15.h>
 #include <SoftwareSerial.h>
@@ -19,6 +24,12 @@
 
 #define OUTPUT1 26
 #define OUTPUT2 27
+#define OUTPUT3 14
+#define OUTPUT4 12
+#define OUTPUT5 13
+#define OUTPUT6 15
+#define OUTPUT7 2
+#define OUTPUT8 33
 
 #define RS485_RXD 3
 #define RS485_FC 4
@@ -35,6 +46,8 @@ const long interval = 15000;
 
 Adafruit_ADS1115 ads1;
 Adafruit_ADS1115 ads2;
+
+const float mA_Factor = 4.096 / 3269.826 ; 
 
 SoftwareSerial *rs485Serial = nullptr; 
 
@@ -54,6 +67,13 @@ void setup() {
 
   pinMode(OUTPUT1, OUTPUT);
   pinMode(OUTPUT2, OUTPUT);
+  pinMode(OUTPUT3, OUTPUT);
+  pinMode(OUTPUT4, OUTPUT);
+  pinMode(OUTPUT5, OUTPUT);
+  pinMode(OUTPUT6, OUTPUT);
+  pinMode(OUTPUT7, OUTPUT);
+  pinMode(OUTPUT8, OUTPUT);
+
 
   pinMode(INPUT1, INPUT);
   pinMode(INPUT2, INPUT);
@@ -72,18 +92,23 @@ void setup() {
   }
   display.display();
 
+  WiFi.mode(WIFI_MODE_APSTA);
+  delay(300);
+  wifi_test();
   delay(100);
   I2C_SCAN_1();
 
   if (!ads1.begin(0x48)) {
     Serial.println("Failed to initialize ADS 1.");
   }
+  ads1.setGain(GAIN_ONE);
 
   if (!ads2.begin(0x49)) {
     Serial.println("Failed to initialize ADS 2.");
   }
+  ads2.setGain(GAIN_ONE);
 
-  adcAttachPin(ANALOG_PIN_0);
+  
 }
 
 void loop() {
@@ -111,7 +136,7 @@ void loop() {
 }
 
 void firstCode() {
-  int16_t adc0, adc1, adc2, adc3;
+ 
 
   Serial.println("");
   Serial.print(digitalRead(INPUT1)); Serial.print(digitalRead(INPUT2)); Serial.print(digitalRead(INPUT3)); Serial.println(digitalRead(INPUT4));
@@ -126,31 +151,23 @@ void firstCode() {
     Serial.println("receiver mode test 'serial print '1'");  
   }
  
-  Serial.println("");
+  
   Serial.print("Push button  "); Serial.println(readSwitch());
   Serial.println("");
-
-  adc0 = ads1.readADC_SingleEnded(0);
-  adc1 = ads1.readADC_SingleEnded(1);
-  adc2 = ads1.readADC_SingleEnded(2);
-  adc3 = ads1.readADC_SingleEnded(3);
-
-  Serial.println("-----------------------------------------------------------");
-  Serial.print("AIN1: "); Serial.print(adc0); Serial.println("  ");
-  Serial.print("AIN2: "); Serial.print(adc1); Serial.println("  ");
-  Serial.print("AIN3: "); Serial.print(adc2); Serial.println("  ");
-  Serial.print("AIN4: "); Serial.print(adc3); Serial.println("  ");
-
-  adc0 = ads2.readADC_SingleEnded(0);
-  adc1 = ads2.readADC_SingleEnded(1);
-  adc2 = ads2.readADC_SingleEnded(2);
-  adc3 = ads2.readADC_SingleEnded(3);
-
-  Serial.println("-----------------------------------------------------------");
-  Serial.print("AIN4: "); Serial.print(adc0); Serial.println("  ");
-  Serial.print("AIN5: "); Serial.print(adc1); Serial.println("  ");
-  Serial.print("AIN6: "); Serial.print(adc2); Serial.println("  ");
-  Serial.print("AIN7: "); Serial.print(adc3); Serial.println("  ");
+  
+   for (int i = 0; i < 4; i++) {
+    float current1 = ads1.readADC_SingleEnded(i) * mA_Factor;
+    Serial.print("Current "); Serial.print(i); Serial.print(": "); Serial.print(current1); Serial.println(" mA");
+  }
+  
+  for (int i = 0; i < 2; i++) {
+    float current2 = ads2.readADC_SingleEnded(i) * mA_Factor;
+    Serial.print("Current "); Serial.print(i+4); Serial.print(": "); Serial.print(current2); Serial.println(" mA");
+      
+  }
+  Serial.println("");
+  delay(100); 
+  
 
   digitalWrite(OUTPUT1, HIGH);
   digitalWrite(OUTPUT2, LOW);
@@ -158,12 +175,32 @@ void firstCode() {
   digitalWrite(OUTPUT1, LOW);
   digitalWrite(OUTPUT2, HIGH);
   delay(200);
+  digitalWrite(OUTPUT3, HIGH);
+  delay(100);
+  digitalWrite(OUTPUT4, HIGH);
+  delay(100);
+  digitalWrite(OUTPUT5, HIGH);
+  delay(100);
+  digitalWrite(OUTPUT6, HIGH);
+  delay(100);
+  digitalWrite(OUTPUT7, HIGH);
+  delay(100);
+  digitalWrite(OUTPUT8, HIGH);
+  delay(100);
+  digitalWrite(OUTPUT3, LOW);
+  digitalWrite(OUTPUT4, LOW);
+  digitalWrite(OUTPUT5, LOW);
+  digitalWrite(OUTPUT6, LOW);
+  digitalWrite(OUTPUT7, LOW);
+  digitalWrite(OUTPUT8, LOW);
+  delay(100);
 
   digitalWrite(RS485_FC, HIGH); // Make FLOW CONTROL pin HIGH
   delay(500);
   Serial2.println(F("RS485 01 SUCCESS")); // Send RS485 SUCCESS serially
   delay(500);
  
+ Serial.print("----------------------");
 }
 
 void secondCode() {
@@ -225,4 +262,39 @@ void I2C_SCAN_1() {
   }
 
   delay(1000);
+}
+
+
+void wifi_test(){
+    Serial.println("");
+String str_macAddress;
+byte mac[6];
+
+WiFi.macAddress(mac);
+
+   str_macAddress = (String(mac[0] >> 4,  HEX) + String(mac[0] & 0x0F, HEX)) + (":") +
+                   (String(mac[1] >> 4,  HEX) + String(mac[1] & 0x0F, HEX)) + (":") +
+                   (String(mac[2] >> 4,  HEX) + String(mac[2] & 0x0F, HEX)) + (":") +
+                   (String(mac[3] >> 4,  HEX) + String(mac[3] & 0x0F, HEX)) + (":") +
+                   (String(mac[4] >> 4,  HEX) + String(mac[4] & 0x0F, HEX)) + (":") +
+                   (String(mac[5] >> 4,  HEX) + String(mac[5] & 0x0F, HEX));
+  str_macAddress.toUpperCase();
+  
+  Serial.println("MAC Address: " + str_macAddress);
+
+  String ssid =  str_macAddress; 
+  const char* password = "12345678";   
+
+  Serial.println("Setting up the Wi-Fi Access Point...");
+  WiFi.softAP(ssid.c_str(), password);
+
+  IPAddress IP = WiFi.softAPIP();
+  Serial.print("Access Point IP address: ");
+  Serial.println(IP);
+
+  Serial.print("Access Point SSID: ");
+  Serial.println(ssid);
+
+  Serial.println("Wi-Fi Access Point is active!");
+  Serial.println("");
 }
